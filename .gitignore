@@ -1,0 +1,19 @@
+# File extensions
+*.pdf
+*.csv
+*.Rda
+*.xlsx
+*.txt
+*.log
+*.gz
+*.Rpoj
+*.svg
+*.aux
+
+# Direcotries
+data/
+text/
+.Rproj.user/
+
+# Excluded file
+account_details.R

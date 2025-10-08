@@ -1,0 +1,34 @@
+\documentclass[a4paper, 12pth]{article}
+\usepackage{amsmath}
+
+\title{Decomposition of the TFR}
+\author{Henrik-Alexander Schubert}
+\newcommand\pd[2]{\frac{\partial #1}{\partial #2}}
+
+\begin{document}
+
+\maketitle
+%=============================================================
+
+The TFR is defined as the sum of age specific fertility rates ($f(x)$), which is the ratio of number of births to the person-years exposed to the event, 
+\begin{equation}
+    f(x) = \frac{births(x)}{exposure(x)}.
+\end{equation}
+Therefore the age-specific fertility rate can be rewritten into the population subgroups ($p$) that contribute to it, so that the population age-specific fertility rate is the sum over all subgroups $p$,
+\begin{equation}
+  f(x) = \sum_{x=15}^{55} \left[ \frac{\sum_i^p births_i(x)}{\sum_i^p exposure_i(x)} \right].
+\end{equation}
+Since the estimation is additive, we can rewrite the equation as weighted average: 
+\begin{equation}
+    TFR = \sum_{x = 1}^{55} \sum_{i = 1}^{p} \underbrace{f_i(x)}_{Behavioral} \times \underbrace{weight_i}_{Composition}
+\end{equation}
+The equation above can be used to decompose the difference in the TFR into the behavioral component stemming from a difference in $f_i(x)$ and a compositional component $weight_i$.
+
+\begin{equation}
+    \Delta TFR = \sum_{x = 1}^{55}
+    \underbrace{\pd{TFR}{f(x)} \cdot \frac{weight(x)_i + weight(x)_j}{2}}_{\Delta Rate} +
+    \underbrace{\pd{TFR}{weight} \cdot \frac{f(x)_i + f(x)_j}{2}}_{\Delta Composition},
+\end{equation}
+which is the observed rate difference between the two groups multiplied with the initial response of the TFR to a change in the age-specific fertility rate, and the initial change in the TFR to a change in the weight of a group.
+
+\end{document}
