@@ -10,6 +10,10 @@ library(tidyverse)
 library(HMDHFDplus)
 library(patchwork)
 library(latex2exp)
+library(DemoDecomp)
+
+# Load the functions
+source("code/functions.R")
 
 # Load the user details
 source("U:/accounts/authentification.R")
@@ -21,20 +25,6 @@ lapply(folders, function(folder){if(!dir.exists(folder)) dir.create(folder)})
 # Create a vector with country selection
 country_selection <- c("France", "Denmark", "U.K.", "Finland", "Germany",  "Norway", "Sweden", "U.S.A")
 
-### Functions -----------------------------
-
-save_fig <- function(filename, figure=last_plot(), height=15, width=15) {
-  ggsave(plot=figure, filename=file.path("figures", paste0(filename, ".pdf")), height=height, width=width, unit="cm")
-  ggsave(plot=figure, filename=file.path("figures", paste0(filename, ".svg")), height=height, width=width, unit="cm")
-  
-}
-
-### Set the graphic scheme ----------------
-
-theme_set(theme_classic(base_size=14, base_family="serif"))
-theme_update(
-  legend.position="bottom"
-)
 ### Query the data ------------------------
 
 
@@ -49,7 +39,7 @@ hfd_coun <- hfd_coun %>%
     Country %in% c("Latvia", "Slovakia", "Ukraine", "Bulgaria", "Hungary", "Poland", "Estonia", "Czechia", "Belarus", "Croatia", "Russia", "Lithuania", "Slovenia") ~ "Eastern-European",
     Country %in% c("Japan", "Taiwan", "Republic of Korea") ~ "Southeast Asian",
     Country %in% c("Italy", "Spain", "Greece", "Portugal") ~ "Mediterranean",
-    Country %in% c("Chile", "Israel") ~ "others"
+    Country %in% c("Chile", "Israel", "West Germany", "East Germany") ~ "others"
   ))
 
 
@@ -168,7 +158,109 @@ hfd_asfrs %>%
   )
   
 
-## Get the monthly birth countrs ----------
+# Look at the cohort feritlity =======================
+
+# Load the cohort fertility
+lit_items <- getHFDitemavail(hfd_coun$CNTRY[hfd_coun=="Lithuania"])
+
+# Load the cohort fertility rate
+lit_fert_tab <- readHFDweb("LTU",  "tfrVHbo", hfd_un, hfd_pw)
+
+# Decompose the parity table =========================
+
+parity_decomposition <- function(cntry, t0, t1) {
+  
+  # Decompose fertility table
+  par_tab <- readHFDweb(cntry, "asfrRRbo", hfd_un, hfd_pw)
+  
+  # Plot the trend in the total fertility rate
+  par_tab |> 
+    group_by(Year) |> 
+    summarise(tfr=sum(ASFR)) |> 
+    ggplot(aes(x=Year, y=tfr)) +
+      geom_vline(xintercept=t0, linetype="dotted") +
+      geom_vline(xintercept=t1, linetype="dotted") +
+      scale_x_continuous(expand=c(0, 0), n.breaks=10) +
+      scale_y_continuous("Total Fertility Rate") +
+      geom_line(linewidth=2)
+  ggsave(filename = paste0("figures/tfr_trend_", cntry, "_", t0, "-", t1, ".pdf"))
+  
+  # Select the two tables
+  asfr_t0 <- par_tab[par_tab$Year==t0, ]
+  asfr_t1 <- par_tab[par_tab$Year==t1, ]
+  
+  # Vectorize the data
+  asfr_t0 <- pivot_longer(asfr_t0, cols=matches("^ASFR\\d"), names_prefix="ASFR", names_to = "parity", values_to="asfr")
+  asfr_t1 <- pivot_longer(asfr_t1, cols=matches("^ASFR\\d"), names_prefix="ASFR", names_to = "parity", values_to="asfr")
+  
+  # Decompose the data
+  decomp_diff <- horiuchi(func = sum,
+           pars1 = asfr_t0$asfr,
+           pars2 = asfr_t1$asfr,
+           N = 10)
+  
+  # Estimate the tfr change
+  tfr_change <- sum(asfr_t0$asfr)-sum(asfr_t1$asfr)
+  
+  # Plot the result
+  asfr_t0$contribution <- decomp_diff
+  asfr_t0$rel_contribution <- asfr_t0$contribution/tfr_change
+  
+  # Plot the decomposition
+  ggplot(asfr_t0, aes(x=Age, y=contribution, fill=parity)) +
+    geom_hline(yintercept=0) +
+    geom_col() +
+    scale_x_continuous(expand=c(0, 0), limits = c(15, 50), breaks=seq(10, 60, by=5)) +
+    scale_y_continuous("Parity-age specific ASFR change") +
+    scale_fill_viridis_d("Parity") +
+    theme_minimal(base_size = 14, base_family="serif")
+  ggsave(filename = paste0("figures/parity_decomp_abs_", cntry, "_", t0, "-", t1, ".pdf"))
+  
+  # Plot the relative contribution
+  ggplot(asfr_t0, aes(x=Age, y=rel_contribution, fill=parity)) +
+    geom_hline(yintercept=0) +
+    geom_col() +
+    scale_x_continuous(expand=c(0, 0), limits = c(15, 50), breaks=seq(10, 60, by=5)) +
+    scale_y_continuous("Relative contribution", labels=scales::percent) +
+    scale_fill_viridis_d("Parity") +
+    theme_minimal(base_size = 14, base_family="serif")
+  ggsave(filename = paste0("figures/parity_decomp_rel_", cntry, "_", t0, "-", t1, ".pdf"))
+  
+  # Percent contribution by parity
+  parity_contribution <- asfr_t0 |> 
+    group_by(parity) |> 
+    summarise(contribution=sum(contribution), 
+              rel_contribution=contribution/tfr_change)
+  # Plot
+  ggplot(parity_contribution, aes(x=parity, y=rel_contribution, fill=parity)) +
+    geom_hline(yintercept=0) +
+    geom_col() +
+    geom_text(aes(x=parity, label=paste(round(rel_contribution*100, 2), "%")), colour="white", family="serif", vjust=-1, size=8) +
+    scale_x_discrete("Parity", expand=c(0, 0)) +
+    scale_y_continuous("Relative contribution", labels=scales::percent) +
+    scale_fill_viridis_d("Parity") +
+    theme_test(base_size=14, base_family="serif") +
+    guides(fill="none") +
+    theme(
+      rect=element_blank(), 
+      axis.ticks.x=element_blank()
+    ) +
+    annotate(geom="text", label=paste("TFR 1=", round(sum(asfr_t0$asfr), 2), paste0("(", t0, ")"), "\nTFR 2=",  round(sum(asfr_t1$asfr), 2),  paste0("(", t1, ")"), "\nTFR change=", round(-tfr_change, 2)), x="5p", y=parity_contribution$rel_contribution[5]*3, family="serif", size=6)
+  ggsave(filename = paste0("figures/parity_contr_", cntry, "_", t0, "-", t1, ".pdf"))
+
+}
+
+# Decompose lithuania
+parity_decomposition("LTU", 1972, 2003)
+parity_decomposition("LTU", 2003, 2015)
+parity_decomposition("LTU", 2015, 2020)
+
+# Make the same for Norway
+parity_decomposition("NOR", 1964, 1976)
+parity_decomposition("NOR", 2003, 2010)
+parity_decomposition("NOR", 2009, 2022)
+
+## Get the monthly birth countrs =====================
 
 # Load the short term fertility fluctuations
 path_hfd_stff <- "https://www.humanfertility.org/File/GetDocumentFree/STFF/stff.csv"
