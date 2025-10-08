@@ -181,8 +181,9 @@ parity_decomposition <- function(cntry, t0, t1) {
       geom_vline(xintercept=t0, linetype="dotted") +
       geom_vline(xintercept=t1, linetype="dotted") +
       scale_x_continuous(expand=c(0, 0), n.breaks=10) +
-      scale_y_continuous("Total Fertility Rate") +
-      geom_line(linewidth=2)
+      scale_y_continuous("Total Fertility Rate", n.breaks=8) +
+      geom_line(linewidth=2) +
+      theme_test(base_size=16, base_family="serif")
   ggsave(filename = paste0("figures/tfr_trend_", cntry, "_", t0, "-", t1, ".pdf"))
   
   # Select the two tables
@@ -200,7 +201,7 @@ parity_decomposition <- function(cntry, t0, t1) {
            N = 10)
   
   # Estimate the tfr change
-  tfr_change <- sum(asfr_t0$asfr)-sum(asfr_t1$asfr)
+  tfr_change <- sum(asfr_t1$asfr)-sum(asfr_t0$asfr)
   
   # Plot the result
   asfr_t0$contribution <- decomp_diff
@@ -213,7 +214,10 @@ parity_decomposition <- function(cntry, t0, t1) {
     scale_x_continuous(expand=c(0, 0), limits = c(15, 50), breaks=seq(10, 60, by=5)) +
     scale_y_continuous("Parity-age specific ASFR change") +
     scale_fill_viridis_d("Parity") +
-    theme_minimal(base_size = 14, base_family="serif")
+    theme_minimal(base_size = 16, base_family="serif") +
+    theme(
+      axis.text = element_text(colour="black")
+    )
   ggsave(filename = paste0("figures/parity_decomp_abs_", cntry, "_", t0, "-", t1, ".pdf"))
   
   # Plot the relative contribution
@@ -223,7 +227,10 @@ parity_decomposition <- function(cntry, t0, t1) {
     scale_x_continuous(expand=c(0, 0), limits = c(15, 50), breaks=seq(10, 60, by=5)) +
     scale_y_continuous("Relative contribution", labels=scales::percent) +
     scale_fill_viridis_d("Parity") +
-    theme_minimal(base_size = 14, base_family="serif")
+    theme_minimal(base_size = 16, base_family="serif")+
+    theme(
+      axis.text = element_text(colour="black")
+    )
   ggsave(filename = paste0("figures/parity_decomp_rel_", cntry, "_", t0, "-", t1, ".pdf"))
   
   # Percent contribution by parity
@@ -239,13 +246,14 @@ parity_decomposition <- function(cntry, t0, t1) {
     scale_x_discrete("Parity", expand=c(0, 0)) +
     scale_y_continuous("Relative contribution", labels=scales::percent) +
     scale_fill_viridis_d("Parity") +
-    theme_test(base_size=14, base_family="serif") +
+    theme_test(base_size=16, base_family="serif") +
     guides(fill="none") +
     theme(
       rect=element_blank(), 
-      axis.ticks.x=element_blank()
+      axis.ticks.x=element_blank(),
+      axis.text = element_text(colour="black")
     ) +
-    annotate(geom="text", label=paste("TFR 1=", round(sum(asfr_t0$asfr), 2), paste0("(", t0, ")"), "\nTFR 2=",  round(sum(asfr_t1$asfr), 2),  paste0("(", t1, ")"), "\nTFR change=", round(-tfr_change, 2)), x="5p", y=parity_contribution$rel_contribution[5]*3, family="serif", size=6)
+    annotate(geom="text", label=paste("TFR 1=", round(sum(asfr_t0$asfr), 2), paste0("(", t0, ")"), "\nTFR 2=",  round(sum(asfr_t1$asfr), 2),  paste0("(", t1, ")"), "\nTFR change=", round(-tfr_change, 2)), x="5p", y=-abs(parity_contribution$rel_contribution[5]*3), family="serif", size=6)
   ggsave(filename = paste0("figures/parity_contr_", cntry, "_", t0, "-", t1, ".pdf"))
 
 }
@@ -256,9 +264,9 @@ parity_decomposition("LTU", 2003, 2015)
 parity_decomposition("LTU", 2015, 2020)
 
 # Make the same for Norway
-parity_decomposition("NOR", 1964, 1976)
+parity_decomposition("NOR", 1967, 1976)
 parity_decomposition("NOR", 2003, 2010)
-parity_decomposition("NOR", 2009, 2022)
+parity_decomposition("NOR", 2009, 2021)
 
 ## Get the monthly birth countrs =====================
 
